@@ -3,7 +3,7 @@ import axios from "axios";
 import "./App.css";
 
 function App() {
-  const API_URL = "http://localhost:5000";
+  const API_URL = "https://mern-inage-db.onrender.com";
 
   const [images, setImages] = useState([]);
   const [file, setFile] = useState(null);
