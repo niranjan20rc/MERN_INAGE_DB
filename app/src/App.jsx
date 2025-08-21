@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import "./App.css"; // 👈 Import CSS file
 
 function App() {
+  const API_URL = "http://localhost:5000"; // centralized API link
+
   const [images, setImages] = useState([]);
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchImages();
@@ -14,7 +19,7 @@ function App() {
 
   const fetchImages = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/images");
+      const res = await axios.get(`${API_URL}/images`);
       setImages(res.data);
     } catch (err) {
       console.error(err);
@@ -28,11 +33,16 @@ function App() {
       const formData = new FormData();
       formData.append("image", file);
       formData.append("name", name);
-      await axios.post("http://localhost:5000/upload", formData, {
+
+      await axios.post(`${API_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
+      // reset inputs
       setFile(null);
       setName("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
       fetchImages();
     } catch (err) {
       console.error(err);
@@ -43,7 +53,7 @@ function App() {
   const handleUpdate = async (id) => {
     if (!editName) return alert("Name required");
     try {
-      await axios.put(`http://localhost:5000/images/${id}`, { name: editName });
+      await axios.put(`${API_URL}/images/${id}`, { name: editName });
       setEditId(null);
       setEditName("");
       fetchImages();
@@ -56,7 +66,7 @@ function App() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this image?")) return;
     try {
-      await axios.delete(`http://localhost:5000/images/${id}`);
+      await axios.delete(`${API_URL}/images/${id}`);
       fetchImages();
     } catch (err) {
       console.error(err);
@@ -64,111 +74,55 @@ function App() {
     }
   };
 
-  const handleDownload = (id, name) => {
-    const link = document.createElement("a");
-    link.href = `http://localhost:5000/images/${id}/view`;
-    link.download = name || "image";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (id, name) => {
+    try {
+      const res = await axios.get(`${API_URL}/images/${id}/view`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name || "image";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Download failed");
+    }
   };
 
   const handleShare = (id) => {
-    const link = `http://localhost:5000/images/${id}/view`;
+    const link = `${API_URL}/images/${id}/view`;
     navigator.clipboard.writeText(link);
     alert("Link copied: " + link);
   };
 
-  // ---------- Styles ----------
-  const containerStyle = {
-    padding: 20,
-    fontFamily: "Arial, sans-serif",
-    maxWidth: 900,
-    margin: "0 auto",
-    minHeight: "100vh",
-    background: "#ffffff",
-    color: "#0d47a1"
-  };
-
-  const headerStyle = {
-    textAlign: "center",
-    color: "#0d47a1",
-    marginBottom: 30
-  };
-
-  const uploadSection = {
-    display: "flex",
-    gap: 10,
-    marginBottom: 20,
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center"
-  };
-
-  const inputStyle = {
-    padding: 8,
-    fontSize: 14,
-    borderRadius: 8,
-    border: "1px solid #0d47a1",
-    outline: "none",
-    minWidth: 150
-  };
-
-  const buttonStyle = {
-    padding: "8px 14px",
-    cursor: "pointer",
-    borderRadius: 8,
-    border: "none",
-    background: "#0d47a1",
-    color: "#fff",
-    fontWeight: "bold",
-    transition: "0.3s"
-  };
-
-  const imageCard = {
-    display: "flex",
-    alignItems: "center",
-    gap: 15,
-    padding: 10,
-    borderRadius: 12,
-    flexWrap: "wrap",
-    background: "#e3f2fd",
-    boxShadow: "2px 4px 12px rgba(0,0,0,0.1)",
-    marginBottom: 12
-  };
-
-  const imgStyle = {
-    width: 100,
-    height: 100,
-    objectFit: "cover",
-    borderRadius: 8,
-    border: "2px solid #0d47a1"
-  };
-
   return (
-    <div style={containerStyle}>
-      <h1 style={headerStyle}>🖼️ Image Dashboard</h1>
+    <div className="container">
+      <h1 className="header">🖼️ Image Dashboard</h1>
 
       {/* Upload Section */}
-      <div style={uploadSection}>
+      <div className="upload-section">
         <input
           type="text"
           placeholder="Image Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={inputStyle}
+          className="input"
         />
         <input
           type="file"
+          ref={fileInputRef}
           onChange={(e) => setFile(e.target.files[0])}
-          style={inputStyle}
+          className="input"
         />
-        <button
-          onClick={handleUpload}
-          style={buttonStyle}
-          onMouseOver={(e) => e.currentTarget.style.filter = "brightness(1.2)"}
-          onMouseOut={(e) => e.currentTarget.style.filter = "brightness(1)"}
-        >
+        <button className="button" onClick={handleUpload}>
           Upload
         </button>
       </div>
@@ -176,11 +130,11 @@ function App() {
       {/* Images List */}
       <div>
         {images.map((img) => (
-          <div key={img._id} style={imageCard}>
+          <div key={img._id} className="image-card">
             <img
-              src={`http://localhost:5000/images/${img._id}/view`}
+              src={`${API_URL}/images/${img._id}/view`}
               alt={img.name}
-              style={imgStyle}
+              className="thumbnail"
             />
 
             {editId === img._id ? (
@@ -188,18 +142,42 @@ function App() {
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  style={inputStyle}
+                  className="input"
                 />
-                <button onClick={() => handleUpdate(img._id)} style={buttonStyle}>Save</button>
-                <button onClick={() => setEditId(null)} style={buttonStyle}>Cancel</button>
+                <button className="button" onClick={() => handleUpdate(img._id)}>
+                  Save
+                </button>
+                <button className="button" onClick={() => setEditId(null)}>
+                  Cancel
+                </button>
               </>
             ) : (
               <>
-                <p style={{ margin: 0, minWidth: 120, fontWeight: "bold" }}>{img.name}</p>
-                <button onClick={() => { setEditId(img._id); setEditName(img.name); }} style={buttonStyle}>Edit</button>
-                <button onClick={() => handleDelete(img._id)} style={buttonStyle}>Delete</button>
-                <button onClick={() => handleDownload(img._id, img.name)} style={buttonStyle}>Download</button>
-                <button onClick={() => handleShare(img._id)} style={buttonStyle}>Share</button>
+                <p className="image-name">{img.name}</p>
+                <button
+                  className="button"
+                  onClick={() => {
+                    setEditId(img._id);
+                    setEditName(img.name);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="button danger"
+                  onClick={() => handleDelete(img._id)}
+                >
+                  Delete
+                </button>
+                <button
+                  className="button"
+                  onClick={() => handleDownload(img._id, img.name)}
+                >
+                  Download
+                </button>
+                <button className="button" onClick={() => handleShare(img._id)}>
+                  Share
+                </button>
               </>
             )}
           </div>
