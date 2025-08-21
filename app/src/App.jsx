@@ -105,7 +105,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1 className="header">🖼️ Image Dashboard</h1>
+      <h1 className="header"> Image Dashboard</h1>
 
       {/* Upload Section */}
       <div className="upload-section">
