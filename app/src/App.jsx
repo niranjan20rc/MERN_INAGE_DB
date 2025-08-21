@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import "./App.css"; // 👈 Import CSS file
+import "./App.css";
 
 function App() {
-  const API_URL = "http://localhost:5000"; // centralized API link
+  const API_URL = "http://localhost:5000";
 
   const [images, setImages] = useState([]);
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [loading, setLoading] = useState(false); // 👈 loading state
 
   const fileInputRef = useRef(null);
 
@@ -19,17 +20,21 @@ function App() {
 
   const fetchImages = async () => {
     try {
+      setLoading(true); // 👈 show spinner
       const res = await axios.get(`${API_URL}/images`);
       setImages(res.data);
     } catch (err) {
       console.error(err);
       alert("Failed to fetch images");
+    } finally {
+      setLoading(false); // 👈 hide spinner
     }
   };
 
   const handleUpload = async () => {
     if (!file || !name) return alert("Select file and enter name!");
     try {
+      setLoading(true);
       const formData = new FormData();
       formData.append("image", file);
       formData.append("name", name);
@@ -38,21 +43,21 @@ function App() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // reset inputs
       setFile(null);
       setName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
-
       fetchImages();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.error || "Upload failed");
+      setLoading(false);
     }
   };
 
   const handleUpdate = async (id) => {
     if (!editName) return alert("Name required");
     try {
+      setLoading(true);
       await axios.put(`${API_URL}/images/${id}`, { name: editName });
       setEditId(null);
       setEditName("");
@@ -60,22 +65,26 @@ function App() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.error || "Update failed");
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this image?")) return;
     try {
+      setLoading(true);
       await axios.delete(`${API_URL}/images/${id}`);
       fetchImages();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.error || "Delete failed");
+      setLoading(false);
     }
   };
 
   const handleDownload = async (id, name) => {
     try {
+      setLoading(true);
       const res = await axios.get(`${API_URL}/images/${id}/view`, {
         responseType: "blob",
       });
@@ -94,6 +103,8 @@ function App() {
     } catch (err) {
       console.error(err);
       alert("Download failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,6 +137,9 @@ function App() {
           Upload
         </button>
       </div>
+
+      {/* Spinner */}
+      {loading && <div className="spinner"></div>}
 
       {/* Images List */}
       <div>
